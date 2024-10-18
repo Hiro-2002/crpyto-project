@@ -35,20 +35,16 @@ async def fetch_latest_price(currency: str) -> float:
 
     data = response.json()
 
-    # Check available currencies in the response
-    available_currencies = data["stats"].keys()  # Get the available currency pairs
+    available_currencies = data["stats"].keys()  
 
-    # Form the currency key
     currency_key = f"{currency.lower()}-usdt"
 
-    # Check if the currency exists in the response
     if currency_key not in available_currencies:
         raise HTTPException(
             status_code=404, 
             detail=f"Currency not found. Available currencies are: {', '.join(available_currencies)}"
         )
 
-    # Return the latest price
     return float(data["stats"][currency_key]["latest"])
 
 
@@ -68,10 +64,7 @@ class TransactionRequest(BaseModel):
 
 # Create a new transaction
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_transaction(
-    db: db_dependency,
-    transaction_request: TransactionRequest
-):
+async def create_transaction(db: db_dependency, transaction_request: TransactionRequest):
     
     latest_price = await fetch_latest_price(transaction_request.currency)
 
