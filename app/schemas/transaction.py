@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class TransactionRequest(BaseModel):
-    transaction_type: str = Field(max_length=3, min_length=3)
+    transaction_type: str = Field(max_length=4, min_length=3)
     currency: str = Field(min_length=3)
     quantity: float
     price_at_time: Optional[float] = None
