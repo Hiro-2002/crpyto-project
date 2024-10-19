@@ -1,9 +1,9 @@
 from collections import defaultdict
-from app.services.price_fetcher import fetch_latest_price
 from typing import Annotated
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.services.price_fetcher import fetch_latest_price
 from app.models.transaction import Transaction
 from app.database import SessionLocal
 from app.schemas.transaction import TransactionRequest
@@ -38,7 +38,6 @@ async def create_transaction(db: db_dependency, transaction_request: Transaction
         currency=transaction_request.currency.upper(),
         quantity=float(transaction_request.quantity),
         price_at_time=latest_price,  
-        total_value=transaction_request.quantity * latest_price, 
         created_at=created_at
     )
 
