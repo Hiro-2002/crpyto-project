@@ -1,13 +1,12 @@
 from collections import defaultdict
-import httpx
-from typing import Annotated, Optional
-from pydantic import BaseModel, Field
+from app.services.price_fetcher import fetch_latest_price
+from typing import Annotated
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.models.transaction import Transaction
 from app.database import SessionLocal
-
+from app.schemas.transaction import TransactionRequest
 
 
 router = APIRouter()
@@ -23,42 +22,6 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
-
-
-async def fetch_latest_price(currency: str) -> float:
-    url = "https://api.nobitex.ir/market/stats"
-    
-    response = httpx.get(url=url)
-
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Failed to fetch market data")
-
-    data = response.json()
-
-    available_currencies = data["stats"].keys()  
-
-    currency_key = f"{currency.lower()}-usdt"
-
-    if currency_key not in available_currencies:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Currency not found. Available currencies are: {', '.join(available_currencies)}"
-        )
-
-    return float(data["stats"][currency_key]["latest"])
-
-
-
-
-
-
-class TransactionRequest(BaseModel):
-    transaction_type: str = Field(max_length=3, min_length=3)
-    currency: str = Field(min_length=3)
-    quantity: float
-    price_at_time: Optional[float] = None
-    total_value: Optional[float] = None
-    created_at: Optional[datetime] = None
 
 
 
