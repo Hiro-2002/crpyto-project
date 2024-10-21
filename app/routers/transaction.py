@@ -71,10 +71,14 @@ async def get_transactions(db: db_dependency):
 
 
 
-# Profit/loss by currency
 @router.get("/profit-loss/currency", status_code=status.HTTP_200_OK)
-async def get_currency_profit_loss(db: db_dependency):
-    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+async def get_currency_profit_loss(db: db_dependency, currency: str = None):
+    query = db.query(Transaction).order_by(Transaction.created_at)
+
+    if currency:
+        query = query.filter(Transaction.currency == currency)
+
+    transactions = query.all()
 
     if not transactions:
         return {"message": "No transactions found", "profit_loss": []}
@@ -115,10 +119,18 @@ async def get_currency_profit_loss(db: db_dependency):
 
 
 
-# Total profit/loss
+from datetime import date
+
 @router.get("/profit-loss/total", status_code=status.HTTP_200_OK)
-async def get_total_profit_loss(db: db_dependency):
-    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+async def get_total_profit_loss(db: db_dependency, start_date: date = None, end_date: date = None):
+    query = db.query(Transaction).order_by(Transaction.created_at)
+
+    if start_date:
+        query = query.filter(Transaction.created_at >= start_date)
+    if end_date:
+        query = query.filter(Transaction.created_at <= end_date)
+
+    transactions = query.all()
 
     if not transactions:
         return {"message": "No transactions found", "total_profit_loss": 0}
@@ -154,10 +166,16 @@ async def get_total_profit_loss(db: db_dependency):
 
 
 
-# Daily profit/loss
 @router.get("/profit-loss/daily", status_code=status.HTTP_200_OK)
-async def get_daily_profit_loss(db: db_dependency):
-    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+async def get_daily_profit_loss(db: db_dependency, start_date: date = None, end_date: date = None):
+    query = db.query(Transaction).order_by(Transaction.created_at)
+
+    if start_date:
+        query = query.filter(Transaction.created_at >= start_date)
+    if end_date:
+        query = query.filter(Transaction.created_at <= end_date)
+
+    transactions = query.all()
 
     if not transactions:
         return {"message": "No transactions found", "daily_profit_loss": []}
