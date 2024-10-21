@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <title>Document</title>
+</head>
+<body>
+    <h1>Transaction Tracker</h1>
+
+    <div id="transaction-form">
+        <h2>Create Transaction</h2>
+        <form hx-post="/transactions/" hx-target="#transactions-list" hx-swap="innerHTML">
+            <label for="transaction_type">Transaction Type:</label>
+            <select id="transaction_type" name="transaction_type">
+                <option value="BUY">Buy</option>
+                <option value="SELL">Sell</option>
+            </select>
+
+            <label for="currency">Currency:</label>
+            <input type="text" id="currency" name="currency" required>
+
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" required>
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <div id="transactions-list">
+        <h2>All Transactions</h2>
+        <!-- The list of transactions will be populated here -->
+        <div hx-get="/transactions/" hx-target="#transactions-list" hx-trigger="load">
+            Loading transactions...
+        </div>
+    </div>
+
+    <div id="profit-loss">
+        <h2>Profit/Loss</h2>
+        <button hx-get="/profit-loss/total" hx-target="#total-profit-loss" hx-swap="innerHTML">
+            Get Total Profit/Loss
+        </button>
+        <div id="total-profit-loss"></div>
+        
+        <button hx-get="/profit-loss/currency" hx-target="#currency-profit-loss" hx-swap="innerHTML">
+            Get Profit/Loss by Currency
+        </button>
+        <div id="currency-profit-loss"></div>
+        
+        <button hx-get="/profit-loss/daily" hx-target="#daily-profit-loss" hx-swap="innerHTML">
+            Get Daily Profit/Loss
+        </button>
+        <div id="daily-profit-loss"></div>
+    </div>
+</body>
+</html>

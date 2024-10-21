@@ -8,6 +8,8 @@ from app.services.price_fetcher import fetch_latest_price
 from app.models.transaction import Transaction
 from app.database import SessionLocal
 from app.schemas.transaction import TransactionRequest
+from fastapi.responses import FileResponse, HTMLResponse
+
 
 
 router = APIRouter()
@@ -25,6 +27,9 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
+@router.get("/", response_class=HTMLResponse)
+async def read_root():
+    return FileResponse("client\index.html")  # Update with the correct path
 
 # Create a new transaction
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -58,7 +63,7 @@ async def get_transactions(db: db_dependency):
 
 
 
-
+# profit/loss by currency
 @router.get("/profit-loss/currency", status_code=status.HTTP_200_OK)
 async def get_currency_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()
@@ -103,6 +108,7 @@ async def get_currency_profit_loss(db: db_dependency):
     return {"currency_profit_loss": currency_profit_loss_list}
 
 
+# total profit/loss
 @router.get("/profit-loss/total", status_code=status.HTTP_200_OK)
 async def get_total_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()
@@ -142,6 +148,7 @@ async def get_total_profit_loss(db: db_dependency):
     return {"total_profit_loss": float(total_profit_loss)}
 
 
+# daily profit/loss
 @router.get("/profit-loss/daily", status_code=status.HTTP_200_OK)
 async def get_daily_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()

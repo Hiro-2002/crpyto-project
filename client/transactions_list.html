@@ -1,0 +1,7 @@
+{% for transaction in transactions %}
+    <div>
+        <p>{{ transaction.transaction_type }}: {{ transaction.quantity }} {{ transaction.currency }} at {{ transaction.price_at_time }}</p>
+    </div>
+{% else %}
+    <p>No transactions found.</p>
+{% endfor %}
