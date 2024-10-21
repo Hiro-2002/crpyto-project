@@ -1,8 +1,9 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Annotated
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from decimal import Decimal
+from fastapi import APIRouter, Depends, status
 from app.services.price_fetcher import fetch_latest_price
 from app.models.transaction import Transaction
 from app.database import SessionLocal
@@ -57,42 +58,131 @@ async def get_transactions(db: db_dependency):
 
 
 
-@router.get("/profit-loss", status_code=status.HTTP_200_OK)
-async def get_profit_loss(db: db_dependency):
-    # Fetch all transactions
-    transactions = db.query(Transaction).all()
+
+@router.get("/profit-loss/currency", status_code=status.HTTP_200_OK)
+async def get_currency_profit_loss(db: db_dependency):
+    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
 
     if not transactions:
         return {"message": "No transactions found", "profit_loss": []}
 
-    currency_profit_loss = defaultdict(float)
-    daily_profit_loss = defaultdict(float)
-    total_profit_loss = 0.0
+    holdings = defaultdict(deque)
+    currency_profit_loss = defaultdict(Decimal)
 
     for transaction in transactions:
-        latest_price = await fetch_latest_price(transaction.currency)
+        if transaction.transaction_type == 'BUY':
+            holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
 
-        profit_or_loss = transaction.quantity * (latest_price - transaction.price_at_time)
+        elif transaction.transaction_type == 'SELL':
+            if not holdings[transaction.currency]:
+                return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
+                
+            sell_quantity = transaction.quantity
+            sell_price = transaction.price_at_time
 
-        currency_profit_loss[transaction.currency] += profit_or_loss
+            while sell_quantity > 0 and holdings[transaction.currency]:
+                buy_quantity, buy_price = holdings[transaction.currency][0]
 
-        transaction_date = transaction.created_at.date()  # Get only the date part
-        daily_profit_loss[transaction_date] += profit_or_loss
+                if buy_quantity <= sell_quantity:
+                    profit_or_loss = (sell_price - buy_price) * buy_quantity
+                    currency_profit_loss[transaction.currency] += profit_or_loss
+                    sell_quantity -= buy_quantity
+                    holdings[transaction.currency].popleft()
 
-        total_profit_loss += profit_or_loss
+                else:
+                    profit_or_loss = (sell_price - buy_price) * sell_quantity
+                    currency_profit_loss[transaction.currency] += profit_or_loss
+                    holdings[transaction.currency][0] = (buy_quantity - sell_quantity, buy_price)
+                    sell_quantity = 0
 
     currency_profit_loss_list = [
-        {"currency": currency, "profit_or_loss": profit_or_loss}
+        {"currency": currency, "profit_or_loss": float(profit_or_loss)}
         for currency, profit_or_loss in currency_profit_loss.items()
     ]
 
+    return {"currency_profit_loss": currency_profit_loss_list}
+
+
+@router.get("/profit-loss/total", status_code=status.HTTP_200_OK)
+async def get_total_profit_loss(db: db_dependency):
+    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+
+    if not transactions:
+        return {"message": "No transactions found", "total_profit_loss": 0}
+
+    holdings = defaultdict(deque)
+    total_profit_loss = Decimal(0)
+
+    for transaction in transactions:
+        if transaction.transaction_type == 'BUY':
+            holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
+
+        elif transaction.transaction_type == 'SELL':
+            if not holdings[transaction.currency]:
+                return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
+                
+            sell_quantity = transaction.quantity
+            sell_price = transaction.price_at_time
+
+            while sell_quantity > 0 and holdings[transaction.currency]:
+                buy_quantity, buy_price = holdings[transaction.currency][0]
+
+                if buy_quantity <= sell_quantity:
+                    profit_or_loss = (sell_price - buy_price) * buy_quantity
+                    total_profit_loss += profit_or_loss
+                    sell_quantity -= buy_quantity
+                    holdings[transaction.currency].popleft()
+
+                else:
+                    profit_or_loss = (sell_price - buy_price) * sell_quantity
+                    total_profit_loss += profit_or_loss
+                    holdings[transaction.currency][0] = (buy_quantity - sell_quantity, buy_price)
+                    sell_quantity = 0
+
+    return {"total_profit_loss": float(total_profit_loss)}
+
+
+@router.get("/profit-loss/daily", status_code=status.HTTP_200_OK)
+async def get_daily_profit_loss(db: db_dependency):
+    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+
+    if not transactions:
+        return {"message": "No transactions found", "daily_profit_loss": []}
+
+    holdings = defaultdict(deque)
+    daily_profit_loss = defaultdict(Decimal)
+
+    for transaction in transactions:
+        transaction_date = transaction.created_at.date()
+
+        if transaction.transaction_type == 'BUY':
+            holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
+
+        elif transaction.transaction_type == 'SELL':
+            if not holdings[transaction.currency]:
+                return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
+                
+            sell_quantity = transaction.quantity
+            sell_price = transaction.price_at_time
+
+            while sell_quantity > 0 and holdings[transaction.currency]:
+                buy_quantity, buy_price = holdings[transaction.currency][0]
+
+                if buy_quantity <= sell_quantity:
+                    profit_or_loss = (sell_price - buy_price) * buy_quantity
+                    daily_profit_loss[transaction_date] += profit_or_loss
+                    sell_quantity -= buy_quantity
+                    holdings[transaction.currency].popleft()
+
+                else:
+                    profit_or_loss = (sell_price - buy_price) * sell_quantity
+                    daily_profit_loss[transaction_date] += profit_or_loss
+                    holdings[transaction.currency][0] = (buy_quantity - sell_quantity, buy_price)
+                    sell_quantity = 0
+
     daily_profit_loss_list = [
-        {"date": date.strftime("%Y-%m-%d"), "profit_or_loss": profit_or_loss}
-        for date, profit_or_loss in daily_profit_loss.items()
+        {"date": str(transaction_date), "profit_or_loss": float(profit_or_loss)}
+        for transaction_date, profit_or_loss in sorted(daily_profit_loss.items())
     ]
 
-    return {
-        "currency_profit_loss": currency_profit_loss_list,
-        "total_profit_loss": total_profit_loss,
-        "daily_profit_loss": daily_profit_loss_list
-    }
+    return {"daily_profit_loss": daily_profit_loss_list}
