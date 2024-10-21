@@ -10,11 +10,7 @@ from app.database import SessionLocal
 from app.schemas.transaction import TransactionRequest
 from fastapi.responses import FileResponse, HTMLResponse
 
-
-
 router = APIRouter()
-
-
 
 def get_db():
     db = SessionLocal()
@@ -23,20 +19,16 @@ def get_db():
     finally:
         db.close()
 
-
 db_dependency = Annotated[Session, Depends(get_db)]
-
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root():
-    return FileResponse("client\index.html")  # Update with the correct path
+    return FileResponse("client/index.html")
 
 # Create a new transaction
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_transaction(db: db_dependency, transaction_request: TransactionRequest):
-    
     latest_price = await fetch_latest_price(transaction_request.currency)
-
     created_at = transaction_request.created_at or datetime.now(tz=timezone.utc)
 
     transaction_model = Transaction(
@@ -54,16 +46,32 @@ async def create_transaction(db: db_dependency, transaction_request: Transaction
     return transaction_model
 
 
-
-# Get All Transactions
-@router.get("/", status_code=status.HTTP_200_OK)
+# HTML
+@router.get("/get", response_class=HTMLResponse)
 async def get_transactions(db: db_dependency):
-    return db.query(Transaction).all()
+    transactions = db.query(Transaction).order_by(Transaction.created_at).all()
+    html_content = "<tbody>"
+    
+    for transaction in transactions:
+        created_at = datetime.fromisoformat(transaction.created_at.isoformat()).strftime("%Y-%m-%d %H:%M:%S")
+        html_content += f"""
+        <tr>
+            <td>{transaction.transaction_type}</td>
+            <td>{transaction.id}</td>
+            <td>{transaction.total_value:.2f}</td>
+            <td>{transaction.quantity}</td>
+            <td>{transaction.price_at_time:.2f}</td>
+            <td>{transaction.currency}</td>
+            <td>{created_at}</td>
+        </tr>
+        """
+    
+    html_content += "</tbody>"
+    return HTMLResponse(content=html_content)
 
 
 
-
-# profit/loss by currency
+# Profit/loss by currency
 @router.get("/profit-loss/currency", status_code=status.HTTP_200_OK)
 async def get_currency_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()
@@ -77,7 +85,6 @@ async def get_currency_profit_loss(db: db_dependency):
     for transaction in transactions:
         if transaction.transaction_type == 'BUY':
             holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
-
         elif transaction.transaction_type == 'SELL':
             if not holdings[transaction.currency]:
                 return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
@@ -93,7 +100,6 @@ async def get_currency_profit_loss(db: db_dependency):
                     currency_profit_loss[transaction.currency] += profit_or_loss
                     sell_quantity -= buy_quantity
                     holdings[transaction.currency].popleft()
-
                 else:
                     profit_or_loss = (sell_price - buy_price) * sell_quantity
                     currency_profit_loss[transaction.currency] += profit_or_loss
@@ -108,7 +114,8 @@ async def get_currency_profit_loss(db: db_dependency):
     return {"currency_profit_loss": currency_profit_loss_list}
 
 
-# total profit/loss
+
+# Total profit/loss
 @router.get("/profit-loss/total", status_code=status.HTTP_200_OK)
 async def get_total_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()
@@ -122,7 +129,6 @@ async def get_total_profit_loss(db: db_dependency):
     for transaction in transactions:
         if transaction.transaction_type == 'BUY':
             holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
-
         elif transaction.transaction_type == 'SELL':
             if not holdings[transaction.currency]:
                 return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
@@ -138,7 +144,6 @@ async def get_total_profit_loss(db: db_dependency):
                     total_profit_loss += profit_or_loss
                     sell_quantity -= buy_quantity
                     holdings[transaction.currency].popleft()
-
                 else:
                     profit_or_loss = (sell_price - buy_price) * sell_quantity
                     total_profit_loss += profit_or_loss
@@ -148,7 +153,8 @@ async def get_total_profit_loss(db: db_dependency):
     return {"total_profit_loss": float(total_profit_loss)}
 
 
-# daily profit/loss
+
+# Daily profit/loss
 @router.get("/profit-loss/daily", status_code=status.HTTP_200_OK)
 async def get_daily_profit_loss(db: db_dependency):
     transactions = db.query(Transaction).order_by(Transaction.created_at).all()
@@ -164,7 +170,6 @@ async def get_daily_profit_loss(db: db_dependency):
 
         if transaction.transaction_type == 'BUY':
             holdings[transaction.currency].append((transaction.quantity, transaction.price_at_time))
-
         elif transaction.transaction_type == 'SELL':
             if not holdings[transaction.currency]:
                 return {"message": f"Cannot sell {transaction.currency}, no quantity left."}
@@ -180,7 +185,6 @@ async def get_daily_profit_loss(db: db_dependency):
                     daily_profit_loss[transaction_date] += profit_or_loss
                     sell_quantity -= buy_quantity
                     holdings[transaction.currency].popleft()
-
                 else:
                     profit_or_loss = (sell_price - buy_price) * sell_quantity
                     daily_profit_loss[transaction_date] += profit_or_loss

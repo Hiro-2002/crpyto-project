@@ -21,7 +21,7 @@ async def fetch_latest_price(currency: str) -> float:
     if currency_key not in available_currencies:
         raise HTTPException(
             status_code=404, 
-            detail=f"Currency not found. Available currencies are: {', '.join(available_currencies)}"
+            detail=f"Currency not found."
         )
 
     return float(data["stats"][currency_key]["latest"])

@@ -3,55 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Transaction Tracker</title>
     <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-    <title>Document</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Basic Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Profit/Loss Section Styling */
+        #profit-loss {
+            background-color: #f9f9f9; /* Light background for contrast */
+            border: 1px solid #e0e0e0; /* Subtle border */
+            border-radius: 8px; /* Rounded corners */
+            padding: 20px; /* Padding inside the div */
+            max-width: 600px; /* Maximum width of the section */
+            margin: 20px auto; /* Center the section horizontally */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
+        }
+
+        /* Heading Style */
+        #profit-loss h2 {
+            font-size: 24px; /* Font size for heading */
+            color: #333; /* Dark text color */
+            margin-bottom: 20px; /* Space below the heading */
+        }
+
+        /* Button Style */
+        .btn {
+            display: inline-block; /* Inline-block for button styling */
+            background-color: #007bff; /* Bootstrap primary color */
+            color: #fff; /* White text */
+            padding: 10px 15px; /* Padding for the button */
+            border: none; /* No border */
+            border-radius: 5px; /* Slightly rounded corners */
+            font-size: 16px; /* Font size for buttons */
+            cursor: pointer; /* Pointer cursor on hover */
+            text-align: center; /* Centered text */
+            transition: background-color 0.3s; /* Smooth background color transition */
+        }
+
+        .btn:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+        /* Margin Top for Result Divs */
+        .mt-2 {
+            margin-top: 10px; /* Space above the result divs */
+        }
+
+        /* Result Div Style */
+        #total-profit-loss,
+        #currency-profit-loss,
+        #daily-profit-loss {
+            background-color: #ffffff; /* White background for result divs */
+            border: 1px solid #e0e0e0; /* Subtle border */
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px; /* Padding inside result divs */
+            font-size: 16px; /* Font size for results */
+            color: #555; /* Dark gray text */
+        }
+    </style>
 </head>
 <body>
-    <h1>Transaction Tracker</h1>
+    <div class="container mt-5">
+        <h1>Crypto Transaction Tracker</h1>
+        <br>
 
-    <div id="transaction-form">
-        <h2>Create Transaction</h2>
-        <form hx-post="/transactions/" hx-target="#transactions-list" hx-swap="innerHTML">
-            <label for="transaction_type">Transaction Type:</label>
-            <select id="transaction_type" name="transaction_type">
-                <option value="BUY">Buy</option>
-                <option value="SELL">Sell</option>
-            </select>
+        <!-- Transaction List -->
+        <h2>Transaction List</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Transaction Type</th>
+                    <th>Transaction ID</th>
+                    <th>Total Value</th>
+                    <th>Quantity</th>
+                    <th>Price at Time</th>
+                    <th>Currency</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody id="transaction-table">
+                <!-- Transactions will be injected here by HTMX -->
+            </tbody>
+        </table>
 
-            <label for="currency">Currency:</label>
-            <input type="text" id="currency" name="currency" required>
-
-            <label for="quantity">Quantity:</label>
-            <input type="number" id="quantity" name="quantity" required>
-
-            <button type="submit">Submit</button>
-        </form>
-    </div>
-
-    <div id="transactions-list">
-        <h2>All Transactions</h2>
-        <!-- The list of transactions will be populated here -->
-        <div hx-get="/transactions/" hx-target="#transactions-list" hx-trigger="load">
-            Loading transactions...
+        <!-- Profit/Loss Section -->
+        <div id="profit-loss">
+            <h2>Profit/Loss</h2>
+            <button hx-get="/profit-loss/total" hx-target="#total-profit-loss" hx-swap="innerHTML" class="btn btn-info">
+                Get Total Profit/Loss
+            </button>
+            <div id="total-profit-loss" class="mt-2"></div>
+            
+            <button hx-get="/profit-loss/currency" hx-target="#currency-profit-loss" hx-swap="innerHTML" class="btn btn-info">
+                Get Profit/Loss by Currency
+            </button>
+            <div id="currency-profit-loss" class="mt-2"></div>
+            
+            <button hx-get="/profit-loss/daily" hx-target="#daily-profit-loss" hx-swap="innerHTML" class="btn btn-info">
+                Get Daily Profit/Loss
+            </button>
+            <div id="daily-profit-loss" class="mt-2"></div>
         </div>
     </div>
 
-    <div id="profit-loss">
-        <h2>Profit/Loss</h2>
-        <button hx-get="/profit-loss/total" hx-target="#total-profit-loss" hx-swap="innerHTML">
-            Get Total Profit/Loss
-        </button>
-        <div id="total-profit-loss"></div>
-        
-        <button hx-get="/profit-loss/currency" hx-target="#currency-profit-loss" hx-swap="innerHTML">
-            Get Profit/Loss by Currency
-        </button>
-        <div id="currency-profit-loss"></div>
-        
-        <button hx-get="/profit-loss/daily" hx-target="#daily-profit-loss" hx-swap="innerHTML">
-            Get Daily Profit/Loss
-        </button>
-        <div id="daily-profit-loss"></div>
-    </div>
+    <script>
+        // Load transactions when the page loads
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/get')
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('transaction-table').innerHTML = html;
+                });
+        });
+    </script>
 </body>
 </html>
