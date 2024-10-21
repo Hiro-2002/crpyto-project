@@ -119,7 +119,6 @@ async def get_currency_profit_loss(db: db_dependency, currency: str = None):
 
 
 
-from datetime import date
 
 @router.get("/profit-loss/total", status_code=status.HTTP_200_OK)
 async def get_total_profit_loss(db: db_dependency, start_date: date = None, end_date: date = None):
